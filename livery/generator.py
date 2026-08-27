@@ -111,6 +111,10 @@ class LiveryGenerator:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # A final livery must never become the next generation's base image.
+        if output_path.resolve() == self.base_texture_path.resolve():
+            raise ValueError("Base texture and livery output paths must be different")
+
         with Image.open(self.base_texture_path) as source:
             base = source.convert("RGBA")
 
@@ -121,16 +125,20 @@ class LiveryGenerator:
         )
         canvas = base.resize(working_size, Image.Resampling.LANCZOS)
 
-        for slot_name, sponsor_name in assignments.items():
+        for slot_name in assignments:
             if slot_name not in self.slots:
                 print(f"[WARNING] Unknown slot: {slot_name}")
-                continue
 
+        # Use calibrated slot order so identical assignment mappings always
+        # composite in the same order, even after a slot is removed and re-added.
+        for slot_name, slot in self.slots.items():
+            if slot_name not in assignments:
+                continue
+            sponsor_name = assignments[slot_name]
             if sponsor_name not in sponsor_data:
                 print(f"[WARNING] Unknown sponsor: {sponsor_name}")
                 continue
 
-            slot = self.slots[slot_name]
             working_slot = self._scale_slot(slot, self.working_scale)
             logo_path = sponsor_data[sponsor_name]["logo"]
 

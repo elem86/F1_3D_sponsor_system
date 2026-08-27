@@ -28,6 +28,13 @@ from livery.config_loader import load_json
 from livery.generator import LiveryGenerator
 
 
+# The GLB imports length-on-Z, so the viewer first maps it onto Panda3D's ground
+# plane. The additional 180-degree pitch is the single correction that turns the
+# imported car upright without changing any child transform.
+MODEL_AXIS_CONVERSION_HPR = (0.0, -90.0, 0.0)
+MODEL_HPR_CORRECTION = (0.0, 180.0, 0.0)
+
+
 class ViewerConfigError(ValueError):
     """Raised when runtime livery configuration is incomplete or inconsistent."""
 
@@ -46,9 +53,10 @@ class CarViewer(ShowBase):
         self.assignments_path = self.project_root / "config" / "demo_assignments.json"  # UI state.
         self.team_path = self.project_root / "config" / "demo_team.json"  # Base color source.
         self.base_texture_path = self.project_root / "generated" / "demo_team_base.png"
-        self.livery_texture_path = (
-            self.project_root / "generated" / "demo_team_livery_runtime.png"
+        self.runtime_texture_directory = (
+            self.project_root / "generated" / "runtime_liveries"
         )
+        self.livery_texture_path = self.runtime_texture_directory / "runtime_livery_0000.png"
 
         # Load and validate configuration before opening a graphics window so that
         # malformed files produce a focused startup error.
@@ -311,13 +319,28 @@ class CarViewer(ShowBase):
         if not bounds:
             raise RuntimeError("Could not calculate bounds for the F1 car model")
 
-        lower, upper = bounds
-        dimensions = upper - lower
-        values = (dimensions.x, dimensions.y, dimensions.z)
+        imported_hpr = self.car_model.getHpr()
+        converted_hpr = tuple(
+            imported_hpr[index] + MODEL_AXIS_CONVERSION_HPR[index]
+            for index in range(3)
+        )
+        self.car_model.setHpr(*converted_hpr)  # Existing GLB-to-viewer axis mapping.
+        before_correction = self.car_model.getHpr()
+        corrected_hpr = tuple(
+            before_correction[index] + MODEL_HPR_CORRECTION[index]
+            for index in range(3)
+        )
 
-        # Detect this game model's length-Z/height-Y arrangement by proportion.
-        if values.index(max(values)) == 2 and values.index(min(values)) == 1:
-            self.car_model.setP(-90)  # Lay a length-on-Z export onto the ground.
+        print(
+            "[INFO] Model root HPR before correction: "
+            f"{tuple(round(value, 6) for value in before_correction)}"
+        )
+        print(f"[INFO] Orientation correction used: {MODEL_HPR_CORRECTION}")
+        self.car_model.setHpr(*corrected_hpr)  # One upright correction on the root.
+        print(
+            "[INFO] Model root HPR after correction: "
+            f"{tuple(round(value, 6) for value in self.car_model.getHpr())}"
+        )
 
         lower, upper = self.car_model.getTightBounds()
         dimensions = upper - lower
@@ -630,21 +653,39 @@ class CarViewer(ShowBase):
 
     def refresh_livery(self) -> Path:
         """Regenerate, reload, and apply the current production livery."""
+        next_revision = self.texture_revision + 1
+        output = self.runtime_texture_directory / f"runtime_livery_{next_revision:04d}.png"
+        previous_output = self.livery_texture_path
+        previous_texture = self.current_texture
         try:
-            # Delegate every placement operation to the production generator.
-            generate_team_base(self.team, self.base_texture_path)  # Fresh clean base.
+            # Recreate the sponsor-free team texture on every refresh. The previous
+            # runtime livery is never passed back into the placement generator.
+            clean_base = generate_team_base(self.team, self.base_texture_path)
+            if clean_base.resolve() == output.resolve():
+                raise RuntimeError("Clean base and runtime output paths must be different")
+
             generator = LiveryGenerator(self.base_texture_path, self.slots)  # Shared pipeline.
             output = generator.generate(
-                assignments=self.assignments,
+                assignments=dict(self.assignments),  # Snapshot the complete current state.
                 sponsor_data=self.generator_sponsors,
-                output_path=self.livery_texture_path,
+                output_path=output,
             )
-            # A newly allocated Texture bypasses Panda3D's filename cache.
-            texture = self._load_texture_without_cache(output)
+            texture = self._load_texture_without_cache(output, next_revision)
             for node in self.livery_nodes:
                 node.setTexture(TextureStage.getDefault(), texture, 100)  # Replace GLB livery.
             self.current_texture = texture  # Retain the active texture reference.
+            self.texture_revision = next_revision
+            self.livery_texture_path = output
+
+            # The node render states now reference the new texture, so release the
+            # previous GPU/RAM data and remove obsolete versioned files.
+            if previous_texture is not None:
+                previous_texture.releaseAll()
+                previous_texture.clear()
+            self._cleanup_runtime_texture_files(keep=output)
         except Exception as error:
+            if output != previous_output and output.exists():
+                output.unlink()
             raise RuntimeError(f"Could not regenerate or reload livery: {error}") from error
 
         print(
@@ -653,17 +694,26 @@ class CarViewer(ShowBase):
         )
         return output
 
-    def _load_texture_without_cache(self, path: Path) -> Texture:
+    def _load_texture_without_cache(self, path: Path, revision: int) -> Texture:
         if not path.is_file():
             raise FileNotFoundError(f"Generated livery texture is missing: {path}")
-        self.texture_revision += 1  # Ensure the texture name is never reused.
-        texture = Texture(f"runtime_livery_{self.texture_revision}")  # Skip pool cache.
+        texture = Texture(f"runtime_livery_{revision:04d}")  # Skip pool cache.
         filename = Filename.fromOsSpecific(str(path.resolve()))
         if not texture.read(filename):
             raise RuntimeError(f"Panda3D could not read generated texture: {path}")
         texture.setMinfilter(Texture.FTLinear)
         texture.setMagfilter(Texture.FTLinear)
         return texture
+
+    def _cleanup_runtime_texture_files(self, keep: Path) -> None:
+        """Retain only the active versioned runtime texture on disk."""
+        self.runtime_texture_directory.mkdir(parents=True, exist_ok=True)
+        for candidate in self.runtime_texture_directory.glob("runtime_livery_*.png"):
+            if candidate.resolve() != keep.resolve():
+                try:
+                    candidate.unlink()
+                except OSError as error:
+                    print(f"[WARNING] Could not remove stale runtime texture {candidate}: {error}")
 
     @staticmethod
     def _read_glb_node_materials(path: Path) -> dict[str, list[str]]:
