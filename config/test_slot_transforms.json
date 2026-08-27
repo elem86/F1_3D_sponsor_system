@@ -1,0 +1,67 @@
+{
+    "engine_cover_left": {
+        "flip_x": false,
+        "flip_y": true,
+        "rotate": 90
+    },
+    "engine_cover_right": {
+        "flip_x": false,
+        "flip_y": true,
+        "rotate": 270
+    },
+    "nose_top": {
+        "flip_x": false,
+        "flip_y": true,
+        "rotate": 90
+    },
+    "bargeboard_left": {
+        "flip_x": true,
+        "flip_y": false,
+        "rotate": 0
+    },
+    "bargeboard_right": {
+        "flip_x": false,
+        "flip_y": false,
+        "rotate": 0
+    },
+    "sidepod_left": {
+        "flip_x": false,
+        "flip_y": true,
+        "rotate": 90
+    },
+    "sidepod_right": {
+        "flip_x": false,
+        "flip_y": true,
+        "rotate": 270
+    },
+    "frontwing_main": {
+        "flip_x": true,
+        "flip_y": false,
+        "rotate": 0
+    },
+    "frontwing_endplate_left": {
+        "flip_x": false,
+        "flip_y": false,
+        "rotate": 0
+    },
+    "frontwing_endplate_right": {
+        "flip_x": true,
+        "flip_y": false,
+        "rotate": 0
+    },
+    "rearwing_main": {
+        "flip_x": true,
+        "flip_y": false,
+        "rotate": 0
+    },
+    "rearwing_side_left": {
+        "flip_x": false,
+        "flip_y": false,
+        "rotate": 270
+    },
+    "rearwing_side_right": {
+        "flip_x": true,
+        "flip_y": false,
+        "rotate": 90
+    }
+}

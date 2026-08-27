@@ -1,0 +1,32 @@
+{
+    "veltrix": {
+        "id": "veltrix",
+        "name": "Veltrix",
+        "logo": "assets/logos/veltrix.png"
+    },
+    "nordyn": {
+        "id": "nordyn",
+        "name": "Nordyn",
+        "logo": "assets/logos/nordyn.png"
+    },
+    "kinetra": {
+        "id": "kinetra",
+        "name": "Kinetra",
+        "logo": "assets/logos/kinetra.png"
+    },
+    "orbix": {
+        "id": "orbix",
+        "name": "Orbix",
+        "logo": "assets/logos/orbix.png"
+    },
+    "aeron": {
+        "id": "aeron",
+        "name": "Aeron",
+        "logo": "assets/logos/aeron.png"
+    },
+    "zentra": {
+        "id": "zentra",
+        "name": "Zentra",
+        "logo": "assets/logos/zentra.png"
+    }
+}

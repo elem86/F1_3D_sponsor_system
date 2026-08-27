@@ -1,0 +1,15 @@
+{
+    "engine_cover_left": "orbix",
+    "engine_cover_right": "kinetra",
+    "nose_top": "aeron",
+    "bargeboard_left": "nordyn",
+    "bargeboard_right": "nordyn",
+    "frontwing_main": "zentra",
+    "frontwing_endplate_left": "orbix",
+    "frontwing_endplate_right": "orbix",
+    "rearwing_main": "veltrix",
+    "rearwing_side_left": "aeron",
+    "rearwing_side_right": "aeron",
+    "sidepod_right": "veltrix",
+    "sidepod_left": "veltrix"
+}

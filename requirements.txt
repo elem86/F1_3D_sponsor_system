@@ -1,0 +1,2 @@
+pillow
+panda3d

@@ -1,0 +1,9 @@
+{
+    "id": "demo_team",
+    "name": "Demo Racing",
+    "colors": {
+        "primary": "#123A8C",
+        "secondary": "#FFFFFF",
+        "accent": "#E53935"
+    }
+}

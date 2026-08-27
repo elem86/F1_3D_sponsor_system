@@ -1,0 +1,393 @@
+{
+    "engine_cover_left": {
+        "object": "single_mesh_object_3",
+        "face_indices": [
+            96,
+            97,
+            98,
+            101,
+            102,
+            103,
+            104,
+            105,
+            106,
+            113,
+            114,
+            115,
+            116
+        ],
+        "uv_bounds": {
+            "u_min": 0.112038,
+            "u_max": 0.240125,
+            "v_min": 0.59878,
+            "v_max": 0.971535
+        },
+        "pixel_bounds": {
+            "x": 29,
+            "y": 7,
+            "width": 32,
+            "height": 96
+        },
+        "transform": {
+            "flip_x": false,
+            "flip_y": true,
+            "rotate": 90
+        },
+        "safe_area": {
+            "x": 0.375,
+            "y": 0.6458333333333334,
+            "width": 0.40625,
+            "height": 0.3541666666666667
+        }
+    },
+    "engine_cover_right": {
+        "object": "single_mesh_object_3",
+        "face_indices": [
+            24,
+            25,
+            26,
+            27,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57
+        ],
+        "uv_bounds": {
+            "u_min": 0.759875,
+            "u_max": 0.887962,
+            "v_min": 0.593284,
+            "v_max": 0.971534
+        },
+        "pixel_bounds": {
+            "x": 195,
+            "y": 7,
+            "width": 32,
+            "height": 97
+        },
+        "transform": {
+            "flip_x": false,
+            "flip_y": true,
+            "rotate": 270
+        },
+        "safe_area": {
+            "x": 0.40625,
+            "y": 0.5051546391752577,
+            "width": 0.59375,
+            "height": 0.4845360824742268
+        }
+    },
+    "nose_top": {
+        "object": "single_mesh_object_3",
+        "face_indices": [
+            170,
+            171,
+            172,
+            173,
+            174,
+            175,
+            180,
+            181,
+            182,
+            183,
+            184,
+            185,
+            192,
+            193,
+            194,
+            195,
+            196,
+            197
+        ],
+        "uv_bounds": {
+            "u_min": 0.455471,
+            "u_max": 0.546933,
+            "v_min": 0.097111,
+            "v_max": 0.433555
+        },
+        "pixel_bounds": {
+            "x": 117,
+            "y": 145,
+            "width": 23,
+            "height": 86
+        },
+        "transform": {
+            "flip_x": false,
+            "flip_y": true,
+            "rotate": 90
+        }
+    },
+    "bargeboard_left": {
+        "object": "single_mesh_object_3",
+        "face_indices": [
+            136,
+            137,
+            138,
+            139
+        ],
+        "uv_bounds": {
+            "u_min": 0.185015,
+            "u_max": 0.399824,
+            "v_min": 0.395651,
+            "v_max": 0.506279
+        },
+        "pixel_bounds": {
+            "x": 47,
+            "y": 126,
+            "width": 55,
+            "height": 29
+        },
+        "transform": {
+            "flip_x": true,
+            "flip_y": false,
+            "rotate": 0
+        }
+    },
+    "bargeboard_right": {
+        "object": "single_mesh_object_3",
+        "face_indices": [
+            62,
+            63,
+            64,
+            65
+        ],
+        "uv_bounds": {
+            "u_min": 0.185015,
+            "u_max": 0.399824,
+            "v_min": 0.260206,
+            "v_max": 0.370835
+        },
+        "pixel_bounds": {
+            "x": 47,
+            "y": 161,
+            "width": 55,
+            "height": 28
+        },
+        "transform": {
+            "flip_x": false,
+            "flip_y": false,
+            "rotate": 0
+        }
+    },
+    "frontwing_main": {
+        "object": "single_mesh_object.001",
+        "face_indices": [
+            52,
+            53
+        ],
+        "uv_bounds": {
+            "u_min": 0.14245,
+            "u_max": 0.458673,
+            "v_min": 0.008745,
+            "v_max": 0.102835
+        },
+        "pixel_bounds": {
+            "x": 36,
+            "y": 230,
+            "width": 81,
+            "height": 24
+        },
+        "transform": {
+            "flip_x": true,
+            "flip_y": false,
+            "rotate": 0
+        }
+    },
+    "frontwing_endplate_left": {
+        "object": "single_mesh_object.001",
+        "face_indices": [
+            12,
+            13,
+            14,
+            15
+        ],
+        "uv_bounds": {
+            "u_min": 0.569367,
+            "u_max": 0.827039,
+            "v_min": 0.101687,
+            "v_max": 0.170342
+        },
+        "pixel_bounds": {
+            "x": 146,
+            "y": 212,
+            "width": 66,
+            "height": 18
+        },
+        "transform": {
+            "flip_x": false,
+            "flip_y": false,
+            "rotate": 0
+        }
+    },
+    "frontwing_endplate_right": {
+        "object": "single_mesh_object.001",
+        "face_indices": [
+            4,
+            5,
+            6,
+            7
+        ],
+        "uv_bounds": {
+            "u_min": 0.569367,
+            "u_max": 0.827039,
+            "v_min": 0.002897,
+            "v_max": 0.071553
+        },
+        "pixel_bounds": {
+            "x": 146,
+            "y": 238,
+            "width": 66,
+            "height": 17
+        },
+        "transform": {
+            "flip_x": true,
+            "flip_y": false,
+            "rotate": 0
+        }
+    },
+    "rearwing_main": {
+        "object": "single_mesh_object.002",
+        "face_indices": [
+            18,
+            19
+        ],
+        "uv_bounds": {
+            "u_min": 0.153953,
+            "u_max": 0.440497,
+            "v_min": 0.178396,
+            "v_max": 0.237203
+        },
+        "pixel_bounds": {
+            "x": 39,
+            "y": 195,
+            "width": 74,
+            "height": 15
+        },
+        "transform": {
+            "flip_x": true,
+            "flip_y": false,
+            "rotate": 0
+        }
+    },
+    "rearwing_side_left": {
+        "object": "single_mesh_object.002",
+        "face_indices": [
+            30,
+            31
+        ],
+        "uv_bounds": {
+            "u_min": 0.718664,
+            "u_max": 0.826203,
+            "v_min": 0.232997,
+            "v_max": 0.412228
+        },
+        "pixel_bounds": {
+            "x": 184,
+            "y": 150,
+            "width": 28,
+            "height": 46
+        },
+        "transform": {
+            "flip_x": false,
+            "flip_y": false,
+            "rotate": 270
+        }
+    },
+    "rearwing_side_right": {
+        "object": "single_mesh_object.002",
+        "face_indices": [
+            0,
+            1
+        ],
+        "uv_bounds": {
+            "u_min": 0.585028,
+            "u_max": 0.692567,
+            "v_min": 0.232997,
+            "v_max": 0.412228
+        },
+        "pixel_bounds": {
+            "x": 150,
+            "y": 150,
+            "width": 27,
+            "height": 46
+        },
+        "transform": {
+            "flip_x": true,
+            "flip_y": false,
+            "rotate": 90
+        }
+    },
+    "sidepod_right": {
+        "object": "single_mesh_object_3",
+        "face_indices": [
+            80,
+            81,
+            82,
+            83
+        ],
+        "uv_bounds": {
+            "u_min": 0.886896,
+            "u_max": 0.984917,
+            "v_min": 0.53881,
+            "v_max": 0.75824
+        },
+        "pixel_bounds": {
+            "x": 227,
+            "y": 62,
+            "width": 25,
+            "height": 56
+        },
+        "transform": {
+            "flip_x": false,
+            "flip_y": true,
+            "rotate": 270
+        }
+    },
+    "sidepod_left": {
+        "object": "single_mesh_object_3",
+        "face_indices": [
+            154,
+            155,
+            156,
+            157
+        ],
+        "uv_bounds": {
+            "u_min": 0.015083,
+            "u_max": 0.113104,
+            "v_min": 0.53881,
+            "v_max": 0.75824
+        },
+        "pixel_bounds": {
+            "x": 4,
+            "y": 62,
+            "width": 25,
+            "height": 56
+        },
+        "transform": {
+            "flip_x": false,
+            "flip_y": true,
+            "rotate": 90
+        }
+    }
+}
