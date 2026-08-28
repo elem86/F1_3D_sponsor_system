@@ -6,10 +6,11 @@ from viewer.car_viewer import CarViewer
 
 
 def main() -> int:
-    """Start the interactive car viewer from the repository root."""
+    """Start the focused runtime sponsor viewer and assignment editor."""
+    project_root = Path(__file__).resolve().parent
     try:
-        viewer = CarViewer(project_root=Path(__file__).resolve().parent)  # Load this checkout.
-        viewer.run_viewer()  # Enter Panda3D's event and rendering loop.
+        viewer = CarViewer(project_root=project_root)
+        viewer.run_viewer()
     except Exception as error:
         print(f"[ERROR] Sponsor editor could not start: {error}")
         return 1

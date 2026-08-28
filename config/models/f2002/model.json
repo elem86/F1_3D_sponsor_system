@@ -1,0 +1,56 @@
+{
+    "id": "f2002",
+    "name": "F2002-style CC0 car",
+    "model": "assets/models/f2002/f2002.glb",
+    "clean_base_texture": "assets/models/f2002/white_base.png",
+    "uv_reference": "assets/models/f2002/uvmap.png",
+    "steering_wheel_texture": "assets/models/f2002/no_branding.png",
+    "team_identity": "config/teams/default_team.json",
+    "texture_size": [
+        2024,
+        2024
+    ],
+    "root_hpr": [
+        0.0,
+        90.0,
+        0.0
+    ],
+    "node_roles": {
+        "body": [
+            "Plane.032"
+        ],
+        "front_wing": [
+            "Circle.092"
+        ],
+        "rear_wing": [
+            "Circle.094"
+        ],
+        "steering_wheel": [
+            "Plane.024"
+        ],
+        "front_wheels": [
+            "Circle.091",
+            "Circle.093"
+        ],
+        "rear_wheels": [
+            "Circle.095",
+            "Circle.097"
+        ],
+        "front_rims_hubs": [
+            "Plane.029",
+            "Plane.034",
+            "Circle.099",
+            "Circle.101",
+            "Circle.102",
+            "Circle.104"
+        ],
+        "rear_rims_hubs": [
+            "Plane.013",
+            "Plane.021",
+            "Circle.096",
+            "Circle.098",
+            "Circle.100",
+            "Circle.103"
+        ]
+    }
+}

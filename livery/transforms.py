@@ -4,7 +4,9 @@ from dataclasses import dataclass
 import math
 from typing import Any, Mapping
 
-from PIL import Image
+from PIL import Image, ImageChops
+
+from livery.slot_masks import best_mask_fit_rectangle, prepare_slot_mask
 
 
 @dataclass(frozen=True)
@@ -153,7 +155,47 @@ def composite_slot_image(
     transformed = apply_slot_transform(image, slot)
     transformed_size = transformed.size
 
-    content_x, content_y, content_width, content_height = resolve_content_bounds(slot)
+    # Crop to the visible non-transparent bounds so centering reflects what the
+    # viewer actually sees, not incidental transparent margins in the source PNG.
+    visible_bbox = transformed.getbbox()
+    visible = transformed.crop(visible_bbox) if visible_bbox else transformed
+
+    center_on_visible_mask = slot.get("center_on_visible_mask", False)
+    if isinstance(center_on_visible_mask, bool):
+        pass
+    else:
+        raise TypeError("Slot center_on_visible_mask must be a boolean")
+
+    prepared_mask = prepare_slot_mask(slot)
+    if prepared_mask is None:
+        content_x, content_y, content_width, content_height = resolve_content_bounds(
+            slot
+        )
+        center_x, center_y = content_x, content_y
+        center_width, center_height = content_width, content_height
+    else:
+        local_x, local_y, content_width, content_height = best_mask_fit_rectangle(
+            prepared_mask,
+            visible.width / visible.height,
+            requested_padding,
+        )
+        content_x = x + local_x
+        content_y = y + local_y
+        if center_on_visible_mask:
+            # Size against the largest contained rectangle (preserves existing
+            # sponsor sizing), but center within the mask's full visible
+            # footprint so an off-center contained rectangle can't drag the
+            # logo off-center. Opt-in only: most masks are already centered
+            # via their largest contained rectangle, and this must not shift
+            # those known-good placements.
+            mask_bbox = prepared_mask.getbbox()
+            center_x = x + mask_bbox[0]
+            center_y = y + mask_bbox[1]
+            center_width = mask_bbox[2] - mask_bbox[0]
+            center_height = mask_bbox[3] - mask_bbox[1]
+        else:
+            center_x, center_y = content_x, content_y
+            center_width, center_height = content_width, content_height
 
     # Keep two pixels where the content box is large enough, one on small boxes,
     # and zero only when even a one-pixel margin would leave no drawable area.
@@ -166,18 +208,29 @@ def composite_slot_image(
     available_height = content_height - padding * 2
 
     scale = min(
-        available_width / transformed.width,
-        available_height / transformed.height,
+        available_width / visible.width,
+        available_height / visible.height,
     )
     fitted_size = (
-        max(1, int(transformed.width * scale)),
-        max(1, int(transformed.height * scale)),
+        max(1, int(visible.width * scale)),
+        max(1, int(visible.height * scale)),
     )
-    fitted = transformed.resize(fitted_size, Image.Resampling.LANCZOS)
+    fitted = visible.resize(fitted_size, Image.Resampling.LANCZOS)
 
-    paste_x = content_x + (content_width - fitted.width) // 2
-    paste_y = content_y + (content_height - fitted.height) // 2
-    canvas.alpha_composite(fitted, (paste_x, paste_y))
+    paste_x = center_x + (center_width - fitted.width) // 2
+    paste_y = center_y + (center_height - fitted.height) // 2
+    if prepared_mask is None:
+        canvas.alpha_composite(fitted, (paste_x, paste_y))
+    else:
+        # Compose through the eroded face-union mask as a final guarantee that
+        # no texture pixels can reach unselected neighboring UV islands.
+        local_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        local_layer.alpha_composite(fitted, (paste_x - x, paste_y - y))
+        clipped_alpha = ImageChops.multiply(
+            local_layer.getchannel("A"), prepared_mask
+        )
+        local_layer.putalpha(clipped_alpha)
+        canvas.alpha_composite(local_layer, (x, y))
 
     return SlotPlacement(
         transform=transform,

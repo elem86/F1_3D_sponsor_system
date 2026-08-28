@@ -1,0 +1,19 @@
+{
+    "id": "default_team",
+    "name": "AERON",
+    "driver_number": "1",
+    "features": {
+        "branding": true,
+        "driver_number": true
+    },
+    "colors": {
+        "base": "#FFFFFF",
+        "primary": "#123A8C",
+        "accent": "#20A9E0"
+    },
+    "assets": {
+        "wordmark": "assets/branding/default_team/aeron_wordmark.png",
+        "small_mark": "assets/branding/default_team/aeron_small.png",
+        "driver_number": "assets/branding/default_team/number_1.png"
+    }
+}

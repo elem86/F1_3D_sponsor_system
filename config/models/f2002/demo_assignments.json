@@ -1,0 +1,14 @@
+{
+    "sidepod_left": "veltrix",
+    "sidepod_right": "veltrix",
+    "engine_cover_left": "kinetra",
+    "engine_cover_right": "kinetra",
+    "rearwing_main": "nordyn",
+    "nose_top": "nordyn",
+    "nose_left": "orbix",
+    "nose_right": "orbix",
+    "frontwing_main": "zentra",
+    "frontwing_left_endplate": "kinetra",
+    "frontwing_right_endplate": "aeron",
+    "rearwing_left_endplate": "nordyn"
+}
