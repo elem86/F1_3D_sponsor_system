@@ -10335,9 +10335,9 @@
     "padding": 6,
     "layout": {
       "sponsor_area": {
-        "x": 0.48,
+        "x": 0.03,
         "y": 0.1,
-        "width": 0.5,
+        "width": 0.42,
         "height": 0.8
       },
       "reserved_areas": [
@@ -10345,9 +10345,9 @@
           "asset": "small_mark",
           "feature": "branding",
           "area": {
-            "x": 0.03,
+            "x": 0.48,
             "y": 0.08,
-            "width": 0.42,
+            "width": 0.5,
             "height": 0.84
           },
           "padding": 4
@@ -11227,9 +11227,9 @@
     "padding": 6,
     "layout": {
       "sponsor_area": {
-        "x": 0.02,
+        "x": 0.55,
         "y": 0.1,
-        "width": 0.5,
+        "width": 0.42,
         "height": 0.8
       },
       "reserved_areas": [
@@ -11237,9 +11237,9 @@
           "asset": "small_mark",
           "feature": "branding",
           "area": {
-            "x": 0.55,
+            "x": 0.02,
             "y": 0.08,
-            "width": 0.42,
+            "width": 0.5,
             "height": 0.84
           },
           "padding": 4
