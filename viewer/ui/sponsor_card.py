@@ -1,0 +1,133 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Callable
+
+from direct.gui.DirectGui import DirectButton, DirectFrame, DirectLabel
+from panda3d.core import CardMaker, NodePath, TextFont, TransparencyAttrib
+
+from viewer.ui import theme
+
+
+@dataclass(frozen=True)
+class SponsorCardGeometry:
+    """Pixel-independent layout for one sponsor card, in aspect2d units."""
+
+    width: float
+    height: float
+
+
+class SponsorCard:
+    """One clickable sponsor entry: logo thumbnail + name, with a select border."""
+
+    def __init__(
+        self,
+        parent: NodePath,
+        *,
+        sponsor_id: str,
+        name: str,
+        texture,
+        texture_aspect: float,
+        geometry: SponsorCardGeometry,
+        pos: tuple[float, float],
+        on_click: Callable[[str], None],
+        font: TextFont | None,
+    ) -> None:
+        self.sponsor_id = sponsor_id
+        self._on_click = on_click
+        width, height = geometry.width, geometry.height
+
+        self.frame = DirectFrame(
+            parent=parent,
+            frameColor=theme.PANEL_ALT,
+            frameSize=(0, width, -height, 0),
+            pos=(pos[0], 0, pos[1]),
+        )
+        self.border = DirectFrame(
+            parent=self.frame,
+            frameColor=(0, 0, 0, 0),
+            frameSize=(0, width, -height, 0),
+            pos=(0, 0, 0),
+        )
+        self._set_border_color(theme.BORDER)
+
+        logo_area_height = height * 0.62
+        logo_max_width = width * 0.8
+        logo_max_height = logo_area_height * 0.86
+        logo_width = logo_max_width
+        logo_height = logo_width / texture_aspect
+        if logo_height > logo_max_height:
+            logo_height = logo_max_height
+            logo_width = logo_height * texture_aspect
+
+        card_maker = CardMaker(f"sponsor_logo_{sponsor_id}")
+        card_maker.setFrame(-logo_width / 2, logo_width / 2, -logo_height / 2, logo_height / 2)
+        logo_node = NodePath(card_maker.generate())
+        logo_node.reparentTo(self.frame)
+        logo_node.setTexture(texture)
+        logo_node.setTransparency(TransparencyAttrib.M_alpha)
+        logo_node.setPos(width / 2, 0, -logo_area_height / 2)
+
+        self.name_label = DirectLabel(
+            parent=self.frame,
+            text=name.upper(),
+            text_align=0,
+            text_scale=theme.TEXT_SCALE_SMALL,
+            text_fg=theme.TEXT_PRIMARY,
+            text_font=font,
+            frameColor=(0, 0, 0, 0),
+            pos=(width / 2, 0, -height + height * 0.16),
+        )
+
+        self.button = DirectButton(
+            parent=self.frame,
+            relief=None,
+            frameSize=(0, width, -height, 0),
+            pos=(0, 0, 0),
+            command=self._handle_click,
+        )
+        self.button.bind("enter", lambda _event: self._set_hover(True))
+        self.button.bind("exit", lambda _event: self._set_hover(False))
+        self._selected = False
+        self._hovered = False
+
+    def _handle_click(self) -> None:
+        self._on_click(self.sponsor_id)
+
+    def _set_hover(self, hovered: bool) -> None:
+        self._hovered = hovered
+        if not self._selected:
+            self.frame["frameColor"] = (
+                theme.PANEL_HEADER if hovered else theme.PANEL_ALT
+            )
+
+    def _set_border_color(self, color: tuple[float, float, float, float]) -> None:
+        thickness = theme.BORDER_THICKNESS * 4
+        width = self.frame["frameSize"][1]
+        height = -self.frame["frameSize"][2]
+        for child in self.border.getChildren():
+            child.removeNode()
+        for frame_spec in (
+            (0, width, 0, thickness),
+            (0, width, -height, -height + thickness),
+            (0, thickness, -height, 0),
+            (width - thickness, width, -height, 0),
+        ):
+            DirectFrame(
+                parent=self.border,
+                frameColor=color,
+                frameSize=frame_spec,
+                pos=(0, 0, 0),
+            )
+
+    def set_selected(self, selected: bool) -> None:
+        self._selected = selected
+        if selected:
+            self.frame["frameColor"] = theme.SELECTED
+            self._set_border_color(theme.SELECTED_BORDER)
+        else:
+            self.frame["frameColor"] = theme.PANEL_ALT
+            self._set_border_color(theme.BORDER)
+
+    def destroy(self) -> None:
+        self.frame.destroy()

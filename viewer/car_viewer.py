@@ -7,13 +7,6 @@ import struct
 from pathlib import Path
 from typing import Any
 
-from direct.gui import DirectGuiGlobals as DGG
-from direct.gui.DirectGui import (
-    DirectButton,
-    DirectFrame,
-    DirectLabel,
-    DirectOptionMenu,
-)
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import (
     AmbientLight,
@@ -28,6 +21,7 @@ from PIL import Image
 
 from livery.config_loader import load_json
 from livery.generator import LiveryGenerator
+from viewer.ui.sponsor_ui import SponsorAllocationUI
 
 
 MODEL_PROFILE = Path("config/models/f2002/model.json")
@@ -285,7 +279,7 @@ class CarViewer(ShowBase):
     def _setup_window(self) -> None:
         """Configure a neutral window before adding scene content."""
         self.disableMouse()
-        self.setBackgroundColor(0.12, 0.14, 0.17, 1.0)
+        self.setBackgroundColor(0.075, 0.078, 0.086, 1.0)
         if self.win is not None and hasattr(self.win, "requestProperties"):
             properties = WindowProperties()
             properties.setTitle(self.window_title)
@@ -293,6 +287,30 @@ class CarViewer(ShowBase):
         if self.camLens is not None:
             self.camLens.setFov(45)
             self.camLens.setNearFar(0.05, 250.0)
+        self._update_viewport_region()
+        self.accept("window-event", self._on_window_event)
+
+    def _on_window_event(self, window) -> None:
+        """Keep the 3D display region matched to the UI viewport on resize."""
+        self._update_viewport_region()
+
+    def _update_viewport_region(self) -> None:
+        """Confine 3D rendering to the left-hand viewport reserved by the UI.
+
+        The sponsor panel occupies the right side of the window, so the 3D
+        camera's display region (and lens aspect ratio) must match the
+        narrower visible viewport or the car would appear stretched.
+        """
+        fraction = SponsorAllocationUI.VIEWPORT_FRACTION
+        if self.win is None or self.camNode is None:
+            return
+        display_region = self.camNode.getDisplayRegion(0)
+        if display_region is None:
+            return
+        display_region.setDimensions(0.0, fraction, 0.0, 1.0)
+        if self.camLens is not None:
+            window_aspect = self.win.getXSize() / max(1, self.win.getYSize())
+            self.camLens.setAspectRatio(window_aspect * fraction)
 
     def _setup_lights(self) -> None:
         """Add broad neutral lighting suitable for inspecting the whole car."""
@@ -503,6 +521,8 @@ class CarViewer(ShowBase):
         self.taskMgr.add(self._orbit_task, "camera-orbit")
 
     def _start_orbit(self) -> None:
+        if not self._mouse_in_viewport():
+            return
         self.orbiting = True
         self.last_mouse = self._mouse_position()
 
@@ -515,6 +535,17 @@ class CarViewer(ShowBase):
             return None
         mouse = self.mouseWatcherNode.getMouse()
         return mouse.x, mouse.y
+
+    def _mouse_in_viewport(self) -> bool:
+        """Reject orbit/zoom input that starts over the sponsor UI panel."""
+        position = self._mouse_position()
+        if position is None:
+            return False
+        fraction = SponsorAllocationUI.VIEWPORT_FRACTION
+        # Mouse x is normalized to [-1, 1] across the full window; the 3D
+        # viewport occupies the left `fraction` of that range.
+        viewport_right_edge = -1.0 + 2.0 * fraction
+        return position[0] <= viewport_right_edge
 
     def _orbit_task(self, task):
         if not self.orbiting:
@@ -535,6 +566,8 @@ class CarViewer(ShowBase):
         self._update_camera()
 
     def _zoom(self, direction: float) -> None:
+        if not self._mouse_in_viewport():
+            return
         factor = 0.88 if direction < 0 else 1.14
         self.distance = max(
             self.minimum_distance,
@@ -563,150 +596,65 @@ class CarViewer(ShowBase):
         self.camera.setR(0)
 
     def _setup_ui(self) -> None:
-        """Build the runtime assignment UI from the current configuration."""
-        panel = DirectFrame(
-            parent=self.a2dTopRight,
-            frameColor=(0.035, 0.045, 0.06, 0.94),
-            frameSize=(-1.08, 0.0, -1.30, 0.0),
-            pos=(-0.04, 0, -0.04),
-        )
-        DirectLabel(
-            parent=panel,
-            text=f"{self.team['name']} Sponsor Editor",
-            text_align=0,
-            text_scale=0.065,
-            text_fg=(0.96, 0.97, 1.0, 1.0),
-            frameColor=(0, 0, 0, 0),
-            pos=(-0.54, 0, -0.10),
-        )
-        DirectLabel(
-            parent=panel,
-            text="Sponsor Slot:",
-            text_align=-1,
-            text_scale=0.045,
-            text_fg=(0.82, 0.86, 0.92, 1.0),
-            frameColor=(0, 0, 0, 0),
-            pos=(-1.00, 0, -0.22),
-        )
-
-        slot_items = list(self.slots) or ["(no F2002 slots configured)"]
-        self.slot_menu = DirectOptionMenu(
-            parent=panel,
-            items=slot_items,
-            initialitem=0,
-            command=self._select_slot,
-            scale=0.045,
-            text_align=-1,
-            frameSize=(-0.1, 21.5, -0.75, 1.05),
-            pos=(-0.98, 0, -0.32),
-        )
-        DirectLabel(
-            parent=panel,
-            text="Sponsor:",
-            text_align=-1,
-            text_scale=0.045,
-            text_fg=(0.82, 0.86, 0.92, 1.0),
-            frameColor=(0, 0, 0, 0),
-            pos=(-1.00, 0, -0.48),
-        )
-
-        self.sponsor_labels = {
-            f"{data.get('name', sponsor_id)} [{sponsor_id}]": sponsor_id
-            for sponsor_id, data in self.sponsors.items()
-        }
-        sponsor_items = list(self.sponsor_labels)
-        self.sponsor_menu = DirectOptionMenu(
-            parent=panel,
-            items=sponsor_items,
-            initialitem=0,
-            command=self._select_sponsor,
-            scale=0.045,
-            text_align=-1,
-            frameSize=(-0.1, 21.5, -0.75, 1.05),
-            pos=(-0.98, 0, -0.58),
-        )
-
-        button_state = DGG.NORMAL if self.slots else DGG.DISABLED
-        DirectButton(
-            parent=panel,
-            text="Apply Sponsor",
-            command=self._apply_selected_sponsor,
-            state=button_state,
-            scale=0.05,
-            text_scale=0.9,
-            frameSize=(-4.5, 4.5, -0.8, 1.15),
-            pos=(-0.78, 0, -0.78),
-        )
-        DirectButton(
-            parent=panel,
-            text="Remove Sponsor",
-            command=self._remove_selected_sponsor,
-            state=button_state,
-            scale=0.05,
-            text_scale=0.9,
-            frameSize=(-4.7, 4.7, -0.8, 1.15),
-            pos=(-0.30, 0, -0.78),
-        )
-        DirectButton(
-            parent=panel,
-            text="Save Assignments",
-            command=self._save_assignments,
-            state=button_state,
-            scale=0.05,
-            text_scale=0.9,
-            frameSize=(-5.0, 5.0, -0.8, 1.15),
-            pos=(-0.54, 0, -0.94),
-        )
-        initial_status = (
-            "Ready"
-            if self.slots
-            else "Add slots in config/models/f2002/sponsor_slots.json"
-        )
-        self.status_label = DirectLabel(
-            parent=panel,
-            text=initial_status,
-            text_align=-1,
-            text_scale=0.037,
-            text_wordwrap=27,
-            text_fg=(0.70, 0.86, 0.72, 1.0),
-            frameColor=(0, 0, 0, 0),
-            pos=(-1.00, 0, -1.10),
-        )
-        DirectLabel(
-            parent=self.a2dBottomLeft,
-            text="Left-drag: orbit   Mouse wheel: zoom   R: reset   Esc: quit",
-            text_align=-1,
-            text_scale=0.04,
-            text_fg=(0.86, 0.88, 0.92, 1.0),
-            frameColor=(0.02, 0.025, 0.035, 0.72),
-            pos=(0.05, 0, 0.06),
+        """Build the one-screen sponsor allocation UI from current configuration."""
+        self.ui = SponsorAllocationUI(
+            self,
+            team_name=self.team.get("name", "TEAM"),
+            driver_number=str(self.team.get("driver_number", "")),
+            slots=self.slots,
+            sponsors=self.sponsors,
+            assignments=self.assignments,
+            on_select_slot=self._select_slot,
+            on_select_sponsor=self._select_sponsor,
+            on_apply=self._apply_selected_sponsor,
+            on_remove=self._remove_selected_sponsor,
+            on_save=self._save_assignments,
         )
         if self.selected_slot is not None:
-            self._sync_sponsor_menu_to_slot()
+            self._sync_selection_to_slot()
+        self._refresh_ui_selection()
 
     def _select_slot(self, slot_name: str) -> None:
         if slot_name not in self.slots:
             return
         self.selected_slot = slot_name
-        if hasattr(self, "sponsor_menu"):
-            self._sync_sponsor_menu_to_slot()
+        self._sync_selection_to_slot()
+        self._refresh_ui_selection()
 
-    def _select_sponsor(self, label: str) -> None:
-        sponsor_id = self.sponsor_labels.get(label)
-        if sponsor_id is not None:
-            self.selected_sponsor = sponsor_id
+    def _select_sponsor(self, sponsor_id: str) -> None:
+        if sponsor_id not in self.sponsors:
+            return
+        self.selected_sponsor = sponsor_id
+        self.ui.set_selected_sponsor(sponsor_id)
 
-    def _sync_sponsor_menu_to_slot(self) -> None:
+    def _sync_selection_to_slot(self) -> None:
+        """Preselect whatever sponsor already occupies the newly chosen slot."""
         if self.selected_slot is None:
             return
         sponsor_id = self.assignments.get(self.selected_slot)
-        if sponsor_id is None:
-            return
-        for index, label in enumerate(self.sponsor_labels):
-            if self.sponsor_labels[label] == sponsor_id:
-                self.sponsor_menu.set(index)
-                self.selected_sponsor = sponsor_id
-                return
+        if sponsor_id is not None:
+            self.selected_sponsor = sponsor_id
+
+    def _refresh_ui_selection(self) -> None:
+        """Push current slot/sponsor/assignment state into the UI widgets."""
+        tier = None
+        if self.selected_slot is not None:
+            slot = self.slots.get(self.selected_slot, {})
+            tier = slot.get("tier")
+        self.ui.set_selected_slot(self.selected_slot, tier)
+
+        current_sponsor_id = (
+            self.assignments.get(self.selected_slot)
+            if self.selected_slot is not None
+            else None
+        )
+        current_sponsor_name = (
+            self.sponsors[current_sponsor_id].get("name", current_sponsor_id)
+            if current_sponsor_id is not None
+            else None
+        )
+        self.ui.set_current_assignment(current_sponsor_name)
+        self.ui.set_selected_sponsor(self.selected_sponsor)
 
     def _apply_selected_sponsor(self) -> None:
         if self.selected_slot is None or self.selected_sponsor is None:
@@ -725,7 +673,9 @@ class CarViewer(ShowBase):
             print(f"[ERROR] Livery refresh failed: {error}")
             return
         name = self.sponsors[self.selected_sponsor].get("name", self.selected_sponsor)
-        self._set_status(f"Applied {name} to {self.selected_slot}")
+        slot_label = self.selected_slot
+        self._refresh_ui_selection()
+        self._set_status(f"{name} assigned to {slot_label}")
 
     def _remove_selected_sponsor(self) -> None:
         if self.selected_slot is None:
@@ -740,6 +690,7 @@ class CarViewer(ShowBase):
             self._set_status(f"Remove failed: {error}", error=True)
             print(f"[ERROR] Livery refresh failed: {error}")
             return
+        self._refresh_ui_selection()
         self._set_status(f"Cleared {self.selected_slot}")
 
     def _save_assignments(self) -> None:
@@ -759,14 +710,12 @@ class CarViewer(ShowBase):
             self._set_status(f"Save failed: {error}", error=True)
             print(f"[ERROR] Could not save assignments: {error}")
             return
-        self._set_status(f"Saved {len(ordered)} assignments")
+        self._set_status("Layout saved")
         print(f"[INFO] Assignments saved: {self.assignments_path}")
 
     def _set_status(self, message: str, error: bool = False) -> None:
-        if hasattr(self, "status_label"):
-            color = (1.0, 0.48, 0.42, 1.0) if error else (0.70, 0.86, 0.72, 1.0)
-            self.status_label["text"] = message
-            self.status_label["text_fg"] = color
+        if hasattr(self, "ui"):
+            self.ui.set_status(message, error=error)
 
     def refresh_livery(self) -> Path:
         """Rebuild from the clean atlas, reload it, and update body/aero meshes."""
