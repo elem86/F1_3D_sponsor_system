@@ -1,2 +1,2 @@
-pillow
-panda3d
+pillow>=12.3.0
+panda3d>=1.10.16

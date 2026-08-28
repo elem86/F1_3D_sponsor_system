@@ -19,6 +19,11 @@ from panda3d.core import (
 )
 from PIL import Image
 
+from livery.app_paths import (
+    get_resource_root,
+    get_seeded_writable_paths,
+    get_writable_root,
+)
 from livery.config_loader import load_json
 from livery.generator import LiveryGenerator
 from livery.sponsor_values import (
@@ -50,10 +55,17 @@ class ViewerConfigError(ValueError):
 class CarViewer(ShowBase):
     """Display the F2002 car and edit its model-specific sponsor assignments."""
 
-    def __init__(self, project_root: str | Path | None = None):
-        # Resolve every input from the checkout so launching elsewhere is safe.
-        self.project_root = Path(project_root or Path(__file__).resolve().parents[1])
-        self.project_root = self.project_root.resolve()
+    def __init__(
+        self,
+        project_root: str | Path | None = None,
+        writable_root: str | Path | None = None,
+    ):
+        # Resolve every read-only input from the bundled/checkout resource
+        # root; `project_root` keeps its established name for compatibility.
+        self.project_root = Path(project_root or get_resource_root()).resolve()
+        # Runtime-generated/user-writable files live under a separate root so
+        # a PyInstaller build never tries to write inside its own bundle.
+        self.writable_root = Path(writable_root or get_writable_root()).resolve()
         self.window_title = "F2002 Sponsor Editor"
 
         # Model-specific data stays together and never falls back to legacy slots.
@@ -61,7 +73,14 @@ class CarViewer(ShowBase):
         self.profile = self._load_mapping(self.profile_path, "model profile")
         self.model_config_directory = self.profile_path.parent
         self.slots_path = self.model_config_directory / "sponsor_slots.json"
-        self.assignments_path = self.model_config_directory / "demo_assignments.json"
+        # The assignments file is user-writable (Save Layout overwrites it),
+        # so it is seeded once from the bundled default into the writable
+        # root and every later read/write targets that copy, never the
+        # bundled one.
+        seeded = get_seeded_writable_paths(self.project_root, self.writable_root)
+        self.assignments_path = seeded[
+            Path("config") / "models" / "f2002" / "demo_assignments.json"
+        ]
         self.sponsors_path = self.project_root / "config" / "sponsors.json"
         self.sponsor_values_path = self.project_root / "config" / "sponsor_values.json"
         self.slots = self._load_mapping(self.slots_path, "sponsor slots")
@@ -78,10 +97,10 @@ class CarViewer(ShowBase):
         self.team_path = self._profile_asset("team_identity")
         self.team = self._load_mapping(self.team_path, "team identity")
         self.production_livery_path = (
-            self.project_root / "generated" / "f2002_team_livery.png"
+            self.writable_root / "generated" / "f2002_team_livery.png"
         )
         self.runtime_texture_directory = (
-            self.project_root / "generated" / "runtime_liveries"
+            self.writable_root / "generated" / "runtime_liveries"
         )
         self.livery_texture_path = self.production_livery_path
         self.texture_size = self._read_texture_size()
@@ -620,7 +639,10 @@ class CarViewer(ShowBase):
             team_name=self.team.get("name", "TEAM"),
             driver_number=str(self.team.get("driver_number", "")),
             slots=self.slots,
-            sponsors=self.sponsors,
+            # Absolute (working-directory-independent) logo paths: the UI
+            # loads logo textures directly, unlike LiveryGenerator calls
+            # which always went through this already-resolved dict.
+            sponsors=self.generator_sponsors,
             assignments=self.assignments,
             tier_values=self.tier_values,
             on_select_slot=self._select_slot,
