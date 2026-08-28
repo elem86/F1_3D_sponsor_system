@@ -23,6 +23,12 @@ from livery.config_loader import load_json
 from livery.generator import LiveryGenerator
 from livery.sponsor_values import (
     assigned_value,
+    get_active_sponsors,
+    get_satisfied_contract_value,
+    get_sponsor_contract_value,
+    get_sponsor_required_exposure,
+    get_total_contract_value,
+    is_exposure_requirement_met,
     load_tier_values,
     sponsor_allocated_value,
     total_car_value,
@@ -639,7 +645,7 @@ class CarViewer(ShowBase):
             return
         self.selected_sponsor = sponsor_id
         self.ui.set_selected_sponsor(sponsor_id)
-        self._refresh_sponsor_value()
+        self._refresh_sponsor_financials()
 
     def _sync_selection_to_slot(self) -> None:
         """Preselect whatever sponsor already occupies the newly chosen slot."""
@@ -672,21 +678,66 @@ class CarViewer(ShowBase):
         self.ui.set_selected_sponsor(self.selected_sponsor)
         self.ui.set_slot_occupants(self.assignments, self.sponsors)
         self._refresh_car_value_summary()
-        self._refresh_sponsor_value()
+        self._refresh_sponsor_financials()
+        self._refresh_contract_summary()
+        self._refresh_sponsor_card_statuses()
 
     def _refresh_car_value_summary(self) -> None:
         assigned = assigned_value(self.slots, self.assignments, self.tier_values)
         total = total_car_value(self.slots, self.tier_values)
         self.ui.set_value_summary(assigned, total)
 
-    def _refresh_sponsor_value(self) -> None:
+    def _refresh_sponsor_financials(self) -> None:
+        """Push the selected sponsor's contract/required/allocated/status.
+
+        Contract value and required exposure come from config/sponsors.json;
+        allocated exposure is computed from the current car assignments.
+        """
         if self.selected_sponsor is None:
-            self.ui.set_sponsor_allocated_value(None, None)
+            self.ui.set_sponsor_financials(
+                None,
+                contract_value=None,
+                required_exposure=None,
+                allocated_exposure=None,
+                requirement_met=None,
+            )
             return
-        allocated = sponsor_allocated_value(
+        sponsor = self.sponsors[self.selected_sponsor]
+        contract_value = get_sponsor_contract_value(sponsor)
+        required_exposure = get_sponsor_required_exposure(sponsor)
+        allocated_exposure = sponsor_allocated_value(
             self.selected_sponsor, self.slots, self.assignments, self.tier_values
         )
-        self.ui.set_sponsor_allocated_value(self.selected_sponsor, allocated)
+        requirement_met = is_exposure_requirement_met(
+            self.selected_sponsor, self.sponsors, self.slots, self.assignments, self.tier_values
+        )
+        self.ui.set_sponsor_financials(
+            self.selected_sponsor,
+            contract_value=contract_value,
+            required_exposure=required_exposure,
+            allocated_exposure=allocated_exposure,
+            requirement_met=requirement_met,
+        )
+
+    def _refresh_contract_summary(self) -> None:
+        """Push TOTAL SPONSOR INCOME (signed) vs. requirement-satisfied income."""
+        total_contract = get_total_contract_value(self.assignments, self.sponsors)
+        satisfied_contract = get_satisfied_contract_value(
+            self.slots, self.assignments, self.sponsors, self.tier_values
+        )
+        self.ui.set_contract_summary(total_contract, satisfied_contract)
+
+    def _refresh_sponsor_card_statuses(self) -> None:
+        """Recolor every sponsor card's status dot: gray/amber/green."""
+        active_sponsors = get_active_sponsors(self.assignments)
+        statuses: dict[str, tuple[bool, bool]] = {}
+        for sponsor_id in self.sponsors:
+            active = sponsor_id in active_sponsors
+            requirement_met = active and is_exposure_requirement_met(
+                sponsor_id, self.sponsors, self.slots, self.assignments, self.tier_values
+            )
+            statuses[sponsor_id] = (active, requirement_met)
+        self.ui.set_sponsor_card_statuses(statuses)
 
     def _apply_selected_sponsor(self) -> None:
         if DEBUG_UI:

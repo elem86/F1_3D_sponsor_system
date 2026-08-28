@@ -7,6 +7,7 @@ from direct.gui import DirectGuiGlobals as DGG
 from direct.gui.DirectGui import DirectButton, DirectFrame, DirectLabel
 from panda3d.core import CardMaker, NodePath, TextFont, TransparencyAttrib
 
+from livery.sponsor_values import format_usd_millions
 from viewer.ui import theme
 
 # Temporary diagnostic logging for the sponsor-card selection bug fix; kept
@@ -37,6 +38,7 @@ class SponsorCard:
         pos: tuple[float, float],
         on_click: Callable[[str], None],
         font: TextFont | None,
+        contract_value_usd: int | None = None,
     ) -> None:
         self.sponsor_id = sponsor_id
         self._on_click = on_click
@@ -73,16 +75,41 @@ class SponsorCard:
         logo_node.setTransparency(TransparencyAttrib.M_alpha)
         logo_node.setPos(width / 2, 0, -logo_area_height / 2)
 
+        # Small requirement-status dot in the top-left corner: gray = not on
+        # the car, amber = assigned but under its required exposure, green =
+        # requirement met. Purely informational -- never blocks placement.
+        dot_size = min(width, height) * 0.09
+        dot_margin = dot_size * 0.9
+        card_maker_dot = CardMaker(f"sponsor_status_dot_{sponsor_id}")
+        card_maker_dot.setFrame(-dot_size / 2, dot_size / 2, -dot_size / 2, dot_size / 2)
+        self.status_dot = NodePath(card_maker_dot.generate())
+        self.status_dot.reparentTo(self.frame)
+        self.status_dot.setPos(dot_margin, 0, -dot_margin)
+        self.status_dot.setColor(theme.EXPOSURE_INACTIVE)
+
+        name_row_y = -height + height * 0.16
         self.name_label = DirectLabel(
             parent=self.frame,
             text=name.upper(),
-            text_align=0,
+            text_align=-1,
             text_scale=theme.TEXT_SCALE_SMALL,
             text_fg=theme.TEXT_PRIMARY,
             text_font=font,
             frameColor=(0, 0, 0, 0),
-            pos=(width / 2, 0, -height + height * 0.16),
+            pos=(width * 0.08, 0, name_row_y),
         )
+        self.value_label = None
+        if contract_value_usd is not None:
+            self.value_label = DirectLabel(
+                parent=self.frame,
+                text=format_usd_millions(contract_value_usd),
+                text_align=1,
+                text_scale=theme.TEXT_SCALE_SMALL,
+                text_fg=theme.VALUE_TEXT,
+                text_font=font,
+                frameColor=(0, 0, 0, 0),
+                pos=(width * 0.92, 0, name_row_y),
+            )
 
         # relief=None leaves the underlying PGItem without a computed frame
         # style; in this Panda3D build that meant the button's mouse region
@@ -143,6 +170,16 @@ class SponsorCard:
         else:
             self.frame["frameColor"] = theme.PANEL_ALT
             self._set_border_color(theme.BORDER)
+
+    def set_exposure_status(self, *, active: bool, requirement_met: bool) -> None:
+        """Recolor the status dot: gray/amber/green, per exposure state."""
+        if not active:
+            color = theme.EXPOSURE_INACTIVE
+        elif requirement_met:
+            color = theme.EXPOSURE_MET
+        else:
+            color = theme.EXPOSURE_UNDER
+        self.status_dot.setColor(color)
 
     def destroy(self) -> None:
         self.frame.destroy()

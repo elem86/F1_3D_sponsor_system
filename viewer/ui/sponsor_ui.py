@@ -7,7 +7,7 @@ from direct.gui.DirectGui import DirectButton, DirectFrame, DirectLabel
 from direct.gui.DirectScrolledFrame import DirectScrolledFrame
 from panda3d.core import NodePath
 
-from livery.sponsor_values import format_usd
+from livery.sponsor_values import format_usd, get_sponsor_contract_value
 from viewer.ui import theme
 from viewer.ui.slot_panel import SlotListPanel, humanize_slot_name
 from viewer.ui.sponsor_card import SponsorCard, SponsorCardGeometry
@@ -170,6 +170,16 @@ class SponsorAllocationUI:
             frameColor=(0, 0, 0, 0),
             pos=(panel_left + 0.025, 0, panel_top - 0.055),
         )
+        self.contract_summary_label = DirectLabel(
+            parent=panel,
+            text="CONTRACTS -- / --",
+            text_align=1,
+            text_scale=theme.TEXT_SCALE_TINY,
+            text_fg=theme.VALUE_TEXT,
+            text_font=self.font,
+            frameColor=(0, 0, 0, 0),
+            pos=(self.right - margin, 0, panel_top - 0.055),
+        )
 
         list_top = panel_top - 0.10
         list_bottom = panel_bottom + margin
@@ -213,6 +223,7 @@ class SponsorAllocationUI:
                 pos=(0.0, cursor_y),
                 on_click=self._on_select_sponsor,
                 font=self.font,
+                contract_value_usd=get_sponsor_contract_value(data),
             )
             self._sponsor_cards[sponsor_id] = card
             cursor_y -= card_height + card_gap
@@ -385,8 +396,10 @@ class SponsorAllocationUI:
             pos=(selected_left, 0, top - 0.225),
         )
 
-        # CURRENT ASSIGNMENT column
+        # CURRENT ASSIGNMENT / SELECTED SPONSOR column
         assignment_left = divider_x + column_width + margin * 2
+        value_column_x = self.right - margin
+
         DirectLabel(
             parent=info_frame,
             text="CURRENT SPONSOR",
@@ -400,53 +413,73 @@ class SponsorAllocationUI:
         self.assignment_label = DirectLabel(
             parent=info_frame,
             text="EMPTY",
-            text_align=-1,
-            text_scale=theme.TEXT_SCALE_HEADING,
+            text_align=1,
+            text_scale=theme.TEXT_SCALE_SMALL,
             text_fg=theme.TEXT_MUTED,
             text_font=self.font,
             frameColor=(0, 0, 0, 0),
-            pos=(assignment_left, 0, top - 0.075),
+            pos=(value_column_x, 0, top - 0.03),
         )
+
         DirectLabel(
             parent=info_frame,
             text="SELECTED SPONSOR",
             text_align=-1,
             text_scale=theme.TEXT_SCALE_TINY,
-            text_fg=theme.TEXT_MUTED,
+            text_fg=theme.TEXT_SECONDARY,
             text_font=self.font,
             frameColor=(0, 0, 0, 0),
-            pos=(assignment_left, 0, top - 0.115),
+            pos=(assignment_left, 0, top - 0.065),
         )
         self.pending_sponsor_label = DirectLabel(
             parent=info_frame,
             text="--",
-            text_align=-1,
-            text_scale=theme.TEXT_SCALE_BODY,
+            text_align=1,
+            text_scale=theme.TEXT_SCALE_SMALL,
             text_fg=theme.ACCENT,
             text_font=self.font,
             frameColor=(0, 0, 0, 0),
-            pos=(assignment_left, 0, top - 0.150),
+            pos=(value_column_x, 0, top - 0.065),
         )
-        DirectLabel(
-            parent=info_frame,
-            text="ALLOCATED VALUE",
-            text_align=-1,
-            text_scale=theme.TEXT_SCALE_TINY,
-            text_fg=theme.TEXT_MUTED,
-            text_font=self.font,
-            frameColor=(0, 0, 0, 0),
-            pos=(assignment_left, 0, top - 0.190),
-        )
-        self.sponsor_value_label = DirectLabel(
-            parent=info_frame,
-            text="--",
-            text_align=-1,
-            text_scale=theme.TEXT_SCALE_BODY,
-            text_fg=theme.VALUE_TEXT,
-            text_font=self.font,
-            frameColor=(0, 0, 0, 0),
-            pos=(assignment_left, 0, top - 0.225),
-        )
+
+        # Compact label/value rows for the sponsor's financial breakdown --
+        # each pair shares one line so five rows fit the available height.
+        finance_row_height = 0.033
+        finance_top = top - 0.105
+        finance_labels = ("CONTRACT", "REQUIRED EXPOSURE", "ALLOCATED", "SHORTFALL", "STATUS")
+        self._finance_value_labels: dict[str, DirectLabel] = {}
+        self._finance_row_positions: dict[str, float] = {}
+        for index, key in enumerate(finance_labels):
+            row_y = finance_top - index * finance_row_height
+            self._finance_row_positions[key] = row_y
+            DirectLabel(
+                parent=info_frame,
+                text=key,
+                text_align=-1,
+                text_scale=theme.TEXT_SCALE_TINY,
+                text_fg=theme.TEXT_MUTED,
+                text_font=self.font,
+                frameColor=(0, 0, 0, 0),
+                pos=(assignment_left, 0, row_y),
+            )
+            value_label = DirectLabel(
+                parent=info_frame,
+                text="--",
+                text_align=1,
+                text_scale=theme.TEXT_SCALE_SMALL,
+                text_fg=theme.VALUE_TEXT,
+                text_font=self.font,
+                frameColor=(0, 0, 0, 0),
+                pos=(value_column_x, 0, row_y),
+            )
+            self._finance_value_labels[key] = value_label
+
+        self.sponsor_contract_label = self._finance_value_labels["CONTRACT"]
+        self.sponsor_required_label = self._finance_value_labels["REQUIRED EXPOSURE"]
+        self.sponsor_value_label = self._finance_value_labels["ALLOCATED"]
+        self.sponsor_shortfall_label = self._finance_value_labels["SHORTFALL"]
+        self.sponsor_status_label = self._finance_value_labels["STATUS"]
+        self._shortfall_row_y = self._finance_row_positions["SHORTFALL"]
 
         # -- Action buttons and status line ------------------------------
         # Buttons anchor from the bottom edge upward so nothing overflows
@@ -604,15 +637,54 @@ class SponsorAllocationUI:
         else:
             self.pending_sponsor_label["text"] = "--"
 
-    def set_sponsor_allocated_value(self, sponsor_id: str | None, value: int | None) -> None:
-        if sponsor_id is None or value is None:
-            self.sponsor_value_label["text"] = "--"
+    def set_sponsor_financials(
+        self,
+        sponsor_id: str | None,
+        *,
+        contract_value: int | None,
+        required_exposure: int | None,
+        allocated_exposure: int | None,
+        requirement_met: bool | None,
+    ) -> None:
+        """Refresh the selected sponsor's contract/exposure breakdown.
+
+        SHORTFALL is only shown while the requirement is not yet met; once
+        met, that row is blanked rather than showing a negative/zero value.
+        """
+        if sponsor_id is None or contract_value is None:
+            for label in self._finance_value_labels.values():
+                label["text"] = "--"
+                label["text_fg"] = theme.VALUE_TEXT
+            return
+
+        self.sponsor_contract_label["text"] = format_usd(contract_value)
+        self.sponsor_contract_label["text_fg"] = theme.VALUE_TEXT
+        self.sponsor_required_label["text"] = format_usd(required_exposure or 0)
+        self.sponsor_required_label["text_fg"] = theme.VALUE_TEXT
+        self.sponsor_value_label["text"] = format_usd(allocated_exposure or 0)
+
+        if requirement_met:
+            self.sponsor_value_label["text_fg"] = theme.EXPOSURE_MET
+            self.sponsor_shortfall_label["text"] = "--"
+            self.sponsor_shortfall_label["text_fg"] = theme.TEXT_MUTED
+            self.sponsor_status_label["text"] = "REQUIREMENT MET"
+            self.sponsor_status_label["text_fg"] = theme.EXPOSURE_MET
         else:
-            self.sponsor_value_label["text"] = format_usd(value)
+            shortfall = max((required_exposure or 0) - (allocated_exposure or 0), 0)
+            self.sponsor_value_label["text_fg"] = theme.EXPOSURE_UNDER
+            self.sponsor_shortfall_label["text"] = format_usd(shortfall)
+            self.sponsor_shortfall_label["text_fg"] = theme.EXPOSURE_UNDER
+            self.sponsor_status_label["text"] = "UNDEREXPOSED"
+            self.sponsor_status_label["text_fg"] = theme.EXPOSURE_UNDER
 
     def set_value_summary(self, assigned: int, total: int) -> None:
         self.value_summary_label["text"] = (
             f"ASSIGNED {format_usd(assigned)} / {format_usd(total)}"
+        )
+
+    def set_contract_summary(self, total_contract: int, satisfied_contract: int) -> None:
+        self.contract_summary_label["text"] = (
+            f"CONTRACTS {format_usd(satisfied_contract)} / {format_usd(total_contract)} MET"
         )
 
     def set_slot_occupants(
@@ -620,6 +692,14 @@ class SponsorAllocationUI:
     ) -> None:
         if self._slot_list is not None:
             self._slot_list.set_occupants(assignments, sponsors)
+
+    def set_sponsor_card_statuses(
+        self, statuses: Mapping[str, tuple[bool, bool]]
+    ) -> None:
+        """Update each sponsor card's status dot from (active, requirement_met)."""
+        for sponsor_id, card in self._sponsor_cards.items():
+            active, requirement_met = statuses.get(sponsor_id, (False, False))
+            card.set_exposure_status(active=active, requirement_met=requirement_met)
 
     def set_status(self, message: str, *, error: bool = False) -> None:
         self.status_label["text"] = message

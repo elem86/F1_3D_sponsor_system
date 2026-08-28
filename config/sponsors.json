@@ -2,31 +2,43 @@
     "veltrix": {
         "id": "veltrix",
         "name": "Veltrix",
-        "logo": "assets/logos/veltrix.png"
+        "logo": "assets/logos/veltrix.png",
+        "contract_value_usd": 4200000,
+        "required_exposure_usd": 700000
     },
     "nordyn": {
         "id": "nordyn",
         "name": "Nordyn",
-        "logo": "assets/logos/nordyn.png"
+        "logo": "assets/logos/nordyn.png",
+        "contract_value_usd": 2600000,
+        "required_exposure_usd": 420000
     },
     "kinetra": {
         "id": "kinetra",
         "name": "Kinetra",
-        "logo": "assets/logos/kinetra.png"
+        "logo": "assets/logos/kinetra.png",
+        "contract_value_usd": 5000000,
+        "required_exposure_usd": 875000
     },
     "orbix": {
         "id": "orbix",
         "name": "Orbix",
-        "logo": "assets/logos/orbix.png"
+        "logo": "assets/logos/orbix.png",
+        "contract_value_usd": 1400000,
+        "required_exposure_usd": 210000
     },
     "aeron": {
         "id": "aeron",
         "name": "Aeron",
-        "logo": "assets/logos/aeron.png"
+        "logo": "assets/logos/aeron.png",
+        "contract_value_usd": 900000,
+        "required_exposure_usd": 140000
     },
     "zentra": {
         "id": "zentra",
         "name": "Zentra",
-        "logo": "assets/logos/zentra.png"
+        "logo": "assets/logos/zentra.png",
+        "contract_value_usd": 2000000,
+        "required_exposure_usd": 280000
     }
 }

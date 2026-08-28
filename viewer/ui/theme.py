@@ -46,6 +46,13 @@ TIER_COLOR_DEFAULT = TEXT_SECONDARY
 # lime UI accent so money reads as its own category at a glance.
 VALUE_TEXT = (0.80, 0.90, 0.74, 1.0)
 
+# Sponsor exposure-requirement status colors (independent of slot tier and
+# generic success/warning use elsewhere): green = requirement met, amber =
+# assigned but still under the sponsor's minimum, gray = not on the car.
+EXPOSURE_MET = (0.62, 0.92, 0.36, 1.0)
+EXPOSURE_UNDER = (0.94, 0.66, 0.20, 1.0)
+EXPOSURE_INACTIVE = (0.50, 0.52, 0.52, 1.0)
+
 
 # --- Typography ----------------------------------------------------------
 _FONT_CANDIDATES = (
