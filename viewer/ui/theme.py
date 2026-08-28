@@ -42,6 +42,10 @@ TIER_COLORS = {
 }
 TIER_COLOR_DEFAULT = TEXT_SECONDARY
 
+# Warm, light-green tone for USD commercial-value figures, distinct from the
+# lime UI accent so money reads as its own category at a glance.
+VALUE_TEXT = (0.80, 0.90, 0.74, 1.0)
+
 
 # --- Typography ----------------------------------------------------------
 _FONT_CANDIDATES = (

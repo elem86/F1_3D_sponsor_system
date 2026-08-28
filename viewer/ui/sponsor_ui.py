@@ -7,6 +7,7 @@ from direct.gui.DirectGui import DirectButton, DirectFrame, DirectLabel
 from direct.gui.DirectScrolledFrame import DirectScrolledFrame
 from panda3d.core import NodePath
 
+from livery.sponsor_values import format_usd
 from viewer.ui import theme
 from viewer.ui.slot_panel import SlotListPanel, humanize_slot_name
 from viewer.ui.sponsor_card import SponsorCard, SponsorCardGeometry
@@ -34,6 +35,7 @@ class SponsorAllocationUI:
         slots: Mapping[str, Any],
         sponsors: Mapping[str, Any],
         assignments: Mapping[str, str],
+        tier_values: Mapping[str, int],
         on_select_slot: Callable[[str], None],
         on_select_sponsor: Callable[[str], None],
         on_apply: Callable[[], None],
@@ -46,6 +48,7 @@ class SponsorAllocationUI:
         self.slots = slots
         self.sponsors = sponsors
         self.assignments = assignments
+        self.tier_values = tier_values
         self._on_select_slot = on_select_slot
         self._on_select_sponsor = on_select_sponsor
         self._on_apply = on_apply
@@ -255,9 +258,20 @@ class SponsorAllocationUI:
             frameColor=(0, 0, 0, 0),
             pos=(self.left + margin, 0, top - 0.03),
         )
+        self.value_summary_label = DirectLabel(
+            parent=slot_panel_frame,
+            text="ASSIGNED -- / --",
+            text_align=1,
+            text_scale=theme.TEXT_SCALE_TINY,
+            text_fg=theme.VALUE_TEXT,
+            text_font=self.font,
+            frameColor=(0, 0, 0, 0),
+            pos=(divider_x - margin, 0, top - 0.03),
+        )
         list_area_top = top - 0.06
         list_area_bottom = self.bottom + margin
-        list_width = divider_x - self.left - margin * 2
+        scroll_bar_width = 0.02
+        list_width = divider_x - self.left - margin * 2 - scroll_bar_width
 
         canvas_height = 0.0
         if self.slots:
@@ -269,7 +283,7 @@ class SponsorAllocationUI:
             frameColor=(0, 0, 0, 0),
             frameSize=(self.left + margin, divider_x - margin, list_area_bottom, list_area_top),
             canvasSize=(0, list_width, -max(canvas_height, list_area_top - list_area_bottom), 0),
-            scrollBarWidth=0.02,
+            scrollBarWidth=scroll_bar_width,
             verticalScroll_relief="flat",
             verticalScroll_frameColor=theme.PANEL_ALT,
             verticalScroll_thumb_relief="flat",
@@ -282,6 +296,9 @@ class SponsorAllocationUI:
         self._slot_list = SlotListPanel(
             self.slot_scroll.getCanvas(),
             slots=self.slots,
+            tier_values=self.tier_values,
+            assignments=self.assignments,
+            sponsors=self.sponsors,
             on_select=self._on_select_slot,
             font=self.font,
             width=list_width,
@@ -357,13 +374,12 @@ class SponsorAllocationUI:
             frameColor=(0, 0, 0, 0),
             pos=(selected_left, 0, top - 0.190),
         )
-        # Placeholder hook for the upcoming A/B/C valuation phase.
         self.slot_value_label = DirectLabel(
             parent=info_frame,
             text="--",
             text_align=-1,
             text_scale=theme.TEXT_SCALE_BODY,
-            text_fg=theme.TEXT_MUTED,
+            text_fg=theme.VALUE_TEXT,
             text_font=self.font,
             frameColor=(0, 0, 0, 0),
             pos=(selected_left, 0, top - 0.225),
@@ -411,6 +427,26 @@ class SponsorAllocationUI:
             frameColor=(0, 0, 0, 0),
             pos=(assignment_left, 0, top - 0.150),
         )
+        DirectLabel(
+            parent=info_frame,
+            text="ALLOCATED VALUE",
+            text_align=-1,
+            text_scale=theme.TEXT_SCALE_TINY,
+            text_fg=theme.TEXT_MUTED,
+            text_font=self.font,
+            frameColor=(0, 0, 0, 0),
+            pos=(assignment_left, 0, top - 0.190),
+        )
+        self.sponsor_value_label = DirectLabel(
+            parent=info_frame,
+            text="--",
+            text_align=-1,
+            text_scale=theme.TEXT_SCALE_BODY,
+            text_fg=theme.VALUE_TEXT,
+            text_font=self.font,
+            frameColor=(0, 0, 0, 0),
+            pos=(assignment_left, 0, top - 0.225),
+        )
 
         # -- Action buttons and status line ------------------------------
         # Buttons anchor from the bottom edge upward so nothing overflows
@@ -456,7 +492,7 @@ class SponsorAllocationUI:
         )
         self._root_nodes_extend(apply_button)
 
-        status_y = button_top_y + button_height + 0.035
+        status_y = button_top_y + button_height + 0.014
         self.status_label = DirectLabel(
             parent=info_frame,
             text="Ready",
@@ -540,13 +576,16 @@ class SponsorAllocationUI:
         panel_left = self.left + (self.right - self.left) * self.VIEWPORT_FRACTION
         return self.left, panel_left, self.bottom + 0.34, self.top - 0.11
 
-    def set_selected_slot(self, slot_name: str | None, tier: str | None) -> None:
+    def set_selected_slot(
+        self, slot_name: str | None, tier: str | None, value: int | None = None
+    ) -> None:
         if self._slot_list is not None:
             self._slot_list.set_selected(slot_name)
         label = humanize_slot_name(slot_name) if slot_name else "--"
         self.slot_name_label["text"] = label
         self.slot_tier_label["text"] = tier or "--"
         self.slot_tier_label["text_fg"] = theme.TIER_COLORS.get(tier, theme.TIER_COLOR_DEFAULT)
+        self.slot_value_label["text"] = format_usd(value) if value is not None else "--"
 
     def set_current_assignment(self, sponsor_name: str | None) -> None:
         if sponsor_name:
@@ -564,6 +603,23 @@ class SponsorAllocationUI:
             self.pending_sponsor_label["text"] = name.upper()
         else:
             self.pending_sponsor_label["text"] = "--"
+
+    def set_sponsor_allocated_value(self, sponsor_id: str | None, value: int | None) -> None:
+        if sponsor_id is None or value is None:
+            self.sponsor_value_label["text"] = "--"
+        else:
+            self.sponsor_value_label["text"] = format_usd(value)
+
+    def set_value_summary(self, assigned: int, total: int) -> None:
+        self.value_summary_label["text"] = (
+            f"ASSIGNED {format_usd(assigned)} / {format_usd(total)}"
+        )
+
+    def set_slot_occupants(
+        self, assignments: Mapping[str, str], sponsors: Mapping[str, Any]
+    ) -> None:
+        if self._slot_list is not None:
+            self._slot_list.set_occupants(assignments, sponsors)
 
     def set_status(self, message: str, *, error: bool = False) -> None:
         self.status_label["text"] = message

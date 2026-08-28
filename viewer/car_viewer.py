@@ -21,6 +21,12 @@ from PIL import Image
 
 from livery.config_loader import load_json
 from livery.generator import LiveryGenerator
+from livery.sponsor_values import (
+    assigned_value,
+    load_tier_values,
+    sponsor_allocated_value,
+    total_car_value,
+)
 from viewer.ui.sponsor_ui import SponsorAllocationUI
 
 # Temporary diagnostic logging for the sponsor-card selection bug fix; kept
@@ -51,9 +57,11 @@ class CarViewer(ShowBase):
         self.slots_path = self.model_config_directory / "sponsor_slots.json"
         self.assignments_path = self.model_config_directory / "demo_assignments.json"
         self.sponsors_path = self.project_root / "config" / "sponsors.json"
+        self.sponsor_values_path = self.project_root / "config" / "sponsor_values.json"
         self.slots = self._load_mapping(self.slots_path, "sponsor slots")
         self.assignments = self._load_mapping(self.assignments_path, "assignments")
         self.sponsors = self._load_mapping(self.sponsors_path, "sponsors")
+        self.tier_values = load_tier_values(self.sponsor_values_path)
 
         # The clean source is immutable; generated output always goes elsewhere.
         self.model_path = self._profile_asset("model")
@@ -608,6 +616,7 @@ class CarViewer(ShowBase):
             slots=self.slots,
             sponsors=self.sponsors,
             assignments=self.assignments,
+            tier_values=self.tier_values,
             on_select_slot=self._select_slot,
             on_select_sponsor=self._select_sponsor,
             on_apply=self._apply_selected_sponsor,
@@ -630,6 +639,7 @@ class CarViewer(ShowBase):
             return
         self.selected_sponsor = sponsor_id
         self.ui.set_selected_sponsor(sponsor_id)
+        self._refresh_sponsor_value()
 
     def _sync_selection_to_slot(self) -> None:
         """Preselect whatever sponsor already occupies the newly chosen slot."""
@@ -645,7 +655,8 @@ class CarViewer(ShowBase):
         if self.selected_slot is not None:
             slot = self.slots.get(self.selected_slot, {})
             tier = slot.get("tier")
-        self.ui.set_selected_slot(self.selected_slot, tier)
+        slot_value = self.tier_values.get(tier) if tier is not None else None
+        self.ui.set_selected_slot(self.selected_slot, tier, slot_value)
 
         current_sponsor_id = (
             self.assignments.get(self.selected_slot)
@@ -659,6 +670,23 @@ class CarViewer(ShowBase):
         )
         self.ui.set_current_assignment(current_sponsor_name)
         self.ui.set_selected_sponsor(self.selected_sponsor)
+        self.ui.set_slot_occupants(self.assignments, self.sponsors)
+        self._refresh_car_value_summary()
+        self._refresh_sponsor_value()
+
+    def _refresh_car_value_summary(self) -> None:
+        assigned = assigned_value(self.slots, self.assignments, self.tier_values)
+        total = total_car_value(self.slots, self.tier_values)
+        self.ui.set_value_summary(assigned, total)
+
+    def _refresh_sponsor_value(self) -> None:
+        if self.selected_sponsor is None:
+            self.ui.set_sponsor_allocated_value(None, None)
+            return
+        allocated = sponsor_allocated_value(
+            self.selected_sponsor, self.slots, self.assignments, self.tier_values
+        )
+        self.ui.set_sponsor_allocated_value(self.selected_sponsor, allocated)
 
     def _apply_selected_sponsor(self) -> None:
         if DEBUG_UI:

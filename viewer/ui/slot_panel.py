@@ -7,7 +7,13 @@ from direct.gui import DirectGuiGlobals as DGG
 from direct.gui.DirectGui import DirectButton, DirectFrame, DirectLabel
 from panda3d.core import NodePath, TextFont
 
+from livery.sponsor_values import format_usd, slot_value
 from viewer.ui import theme
+
+# Below this row width, showing the current occupant inline would crowd out
+# the position name or the value column, so it is dropped from the row and
+# stays visible only in the Selected Position / Current Sponsor panel.
+_MIN_WIDTH_FOR_OCCUPANT = 0.62
 
 
 _SIDE_SUFFIXES = {
@@ -80,13 +86,21 @@ def group_slots_by_tier(slots: Mapping[str, Any]) -> dict[str, list[str]]:
 
 
 class SlotListPanel:
-    """A categorized (A/B/C) clickable list of sponsor slots."""
+    """A categorized (A/B/C) clickable list of sponsor slots.
+
+    Each row shows the human-readable position name and its tier's USD
+    value; the current occupant is also shown inline when the row is wide
+    enough not to crowd the name or value columns.
+    """
 
     def __init__(
         self,
         parent: NodePath,
         *,
         slots: Mapping[str, Any],
+        tier_values: Mapping[str, int] | None = None,
+        assignments: Mapping[str, str] | None = None,
+        sponsors: Mapping[str, Any] | None = None,
         on_select: Callable[[str], None],
         font: TextFont | None,
         width: float,
@@ -104,7 +118,12 @@ class SlotListPanel:
         self._on_select = on_select
         self._row_height = row_height
         self._width = width
+        self._slots = slots
+        self._tier_values = tier_values or {}
+        self._show_occupant = width >= _MIN_WIDTH_FOR_OCCUPANT
         self._buttons: dict[str, DirectButton] = {}
+        self._value_labels: dict[str, DirectLabel] = {}
+        self._occupant_labels: dict[str, DirectLabel] = {}
         self._selected: str | None = None
 
         grouped = group_slots_by_tier(slots)
@@ -131,6 +150,7 @@ class SlotListPanel:
             cursor -= heading_gap
 
         self.total_height = -cursor
+        self.set_occupants(assignments or {}, sponsors or {})
 
     def _make_row(self, slot_name: str, y: float) -> None:
         label_text = humanize_slot_name(slot_name)
@@ -152,6 +172,32 @@ class SlotListPanel:
         button.bind("enter", lambda _e, n=slot_name: self._set_hover(n, True))
         button.bind("exit", lambda _e, n=slot_name: self._set_hover(n, False))
         self._buttons[slot_name] = button
+
+        value = slot_value(self._slots.get(slot_name, {}), self._tier_values)
+        value_label = DirectLabel(
+            parent=self.root,
+            text=format_usd(value) if value is not None else "--",
+            text_align=1,
+            text_scale=theme.TEXT_SCALE_SMALL,
+            text_fg=theme.VALUE_TEXT,
+            text_font=self._font,
+            frameColor=(0, 0, 0, 0),
+            pos=(self._width - 0.014, 0, y - self._row_height * 0.62),
+        )
+        self._value_labels[slot_name] = value_label
+
+        if self._show_occupant:
+            occupant_label = DirectLabel(
+                parent=self.root,
+                text="",
+                text_align=0,
+                text_scale=theme.TEXT_SCALE_TINY,
+                text_fg=theme.TEXT_MUTED,
+                text_font=self._font,
+                frameColor=(0, 0, 0, 0),
+                pos=(self._width * 0.62, 0, y - self._row_height * 0.62),
+            )
+            self._occupant_labels[slot_name] = occupant_label
 
     def _handle_click(self, slot_name: str) -> None:
         self._on_select(slot_name)
@@ -175,6 +221,22 @@ class SlotListPanel:
             if current is not None:
                 current["frameColor"] = theme.SELECTED
                 current["text_fg"] = theme.ACCENT
+
+    def set_occupants(
+        self, assignments: Mapping[str, str], sponsors: Mapping[str, Any]
+    ) -> None:
+        """Refresh the compact current-sponsor text shown in each row."""
+        if not self._occupant_labels:
+            return
+        for slot_name, label in self._occupant_labels.items():
+            sponsor_id = assignments.get(slot_name)
+            if sponsor_id is None:
+                label["text"] = "EMPTY"
+                label["text_fg"] = theme.TEXT_MUTED
+            else:
+                name = sponsors.get(sponsor_id, {}).get("name", sponsor_id)
+                label["text"] = name.upper()
+                label["text_fg"] = theme.TEXT_SECONDARY
 
     def destroy(self) -> None:
         self.root.destroy()
