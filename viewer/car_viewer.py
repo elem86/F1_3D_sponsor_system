@@ -23,6 +23,10 @@ from livery.config_loader import load_json
 from livery.generator import LiveryGenerator
 from viewer.ui.sponsor_ui import SponsorAllocationUI
 
+# Temporary diagnostic logging for the sponsor-card selection bug fix; kept
+# behind a flag rather than removed outright per the debugging instructions.
+DEBUG_UI = False
+
 
 MODEL_PROFILE = Path("config/models/f2002/model.json")
 
@@ -657,6 +661,11 @@ class CarViewer(ShowBase):
         self.ui.set_selected_sponsor(self.selected_sponsor)
 
     def _apply_selected_sponsor(self) -> None:
+        if DEBUG_UI:
+            print(
+                f"Applying sponsor={self.selected_sponsor} "
+                f"to slot={self.selected_slot}"
+            )
         if self.selected_slot is None or self.selected_sponsor is None:
             self._set_status("No configured slot or sponsor is selected", error=True)
             return

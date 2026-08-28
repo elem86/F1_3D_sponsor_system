@@ -3,10 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
+from direct.gui import DirectGuiGlobals as DGG
 from direct.gui.DirectGui import DirectButton, DirectFrame, DirectLabel
 from panda3d.core import CardMaker, NodePath, TextFont, TransparencyAttrib
 
 from viewer.ui import theme
+
+# Temporary diagnostic logging for the sponsor-card selection bug fix; kept
+# behind a flag rather than removed outright per the debugging instructions.
+DEBUG_UI = False
 
 
 @dataclass(frozen=True)
@@ -79,9 +84,17 @@ class SponsorCard:
             pos=(width / 2, 0, -height + height * 0.16),
         )
 
+        # relief=None leaves the underlying PGItem without a computed frame
+        # style; in this Panda3D build that meant the button's mouse region
+        # was never registered with the MouseWatcher unless some other
+        # relief'd sibling widget happened to force a frame-style recompute
+        # first. relief=DGG.FLAT (transparent) gives the button a real frame
+        # style so its whole area is reliably clickable, while staying
+        # visually identical since self.frame already paints the background.
         self.button = DirectButton(
             parent=self.frame,
-            relief=None,
+            relief=DGG.FLAT,
+            frameColor=(0, 0, 0, 0),
             frameSize=(0, width, -height, 0),
             pos=(0, 0, 0),
             command=self._handle_click,
@@ -92,6 +105,8 @@ class SponsorCard:
         self._hovered = False
 
     def _handle_click(self) -> None:
+        if DEBUG_UI:
+            print(f"Sponsor clicked: {self.sponsor_id}")
         self._on_click(self.sponsor_id)
 
     def _set_hover(self, hovered: bool) -> None:

@@ -10,5 +10,6 @@
     "frontwing_main": "zentra",
     "frontwing_left_endplate": "kinetra",
     "frontwing_right_endplate": "aeron",
-    "rearwing_left_endplate": "nordyn"
+    "rearwing_left_endplate": "nordyn",
+    "rearwing_right_endplate": "kinetra"
 }
